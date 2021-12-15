@@ -26,14 +26,8 @@ mod ergo {
             Mat4::from_scale(vec3(-1.0, -1.0, 1.0))
         }
 
-        pub fn rotate_rad(radians: f32) -> Mat4 {
+        pub fn rotate_z(radians: f32) -> Mat4 {
             Mat4::from_rotation_z(radians)
-        }
-        pub fn rotate_deg(degrees: f32) -> Mat4 {
-            rotate_rad(degrees.to_radians())
-        }
-        pub fn rotate_turns(turns: f32) -> Mat4 {
-            rotate_rad(TAU * turns)
         }
 
         pub fn upscale(scale: f32) -> Mat4 {
@@ -92,13 +86,21 @@ fn nyoom(rad: f32) -> Mat4 {
 fn window_conf() -> Conf {
     Conf {
         window_title: "title".to_owned(),
-        fullscreen: true,
+        window_width: 512,
+        window_height: 512,
+        fullscreen: false,
+        window_resizable: true,
         ..Default::default()
     }
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // resource folder
+    set_pc_assets_folder("../../../Resources");
+    let font = load_ttf_font("fonts/VarelaRound-Regular.ttf")
+        .await
+        .expect("rip varela round");
     // gl for transforms
     let gl = unsafe { get_internal_gl().quad_gl };
     // camera for canvases
@@ -107,10 +109,11 @@ async fn main() {
     set_camera(cam);
 
     // initialize canvases
-    let outer = new_canvas(256, 256);
+    let outer = new_canvas(512, 512);
     let [mut x, mut y, mut yaw, mut pitch, mut roll] = [0.0; 5];
+    // TODO: implement zooming through mouse wheel
     let mut zoom = 1.0;
-    let inner = new_canvas(256, 256);
+    let inner = new_canvas(128, 128);
 
     // main loop
     loop {
@@ -136,7 +139,7 @@ async fn main() {
                 return;
             }
 
-            // WASD movement
+            // WASD movement, y goes up
             if is_key_down(S) {
                 y -= delta;
             }
@@ -166,17 +169,23 @@ async fn main() {
             clear_background(DARKGREEN);
             paint_canvas(inner, cam, |_| {
                 clear_background(DARKBROWN);
-                let text_scale = 256.0;
-                apply_transforms(gl, &[downscale(text_scale), flip_y()], |_gl| {
-                    draw_text("sample text", text_scale * -0.5, 0.0, 64.0, ORANGE);
+                apply_transforms(gl, &[flip_y()], |_gl| {
+                    let params = TextParams {
+                        font,
+                        font_size: 64,
+                        font_scale: 1.0 / 256.0,
+                        color: ORANGE,
+                        ..Default::default()
+                    };
+                    draw_text_ex("Sample Text", -0.75, 0.0, params);
                 });
-                apply_transform(gl, rotate_turns(time / 3.0), |_| {
+                apply_transform(gl, rotate_z(time / 3.0 * TAU), |_| {
                     draw_line(0.0, 0.0, 0.0, 1.0, 0.25 * 0.25, BLUE);
                 })
             });
 
             // arbitrary
-            let rotation = rotate_turns(time / 5.0);
+            let rotation = rotate_z(time / 5.0 * TAU);
             let translation = shift((time * 2.0).sin() / 2.0, 0.0);
 
             // notice the difference in order of rotation and translation
@@ -184,22 +193,16 @@ async fn main() {
             apply_transforms(gl, &[translation, rotation], |gl| draw_canvas(inner, gl));
             // comment one out to find out which is which
 
-            let text_scale = 512.0;
-            apply_transforms(gl, &[downscale(text_scale), flip_y()], |_gl| {
-                draw_text(
-                    &format!("X: {}", mouse.x),
-                    text_scale * -0.375,
-                    text_scale * 0.125,
-                    64.0,
-                    YELLOW,
-                );
-                draw_text(
-                    &format!("Y: {}", mouse.y),
-                    text_scale * -0.375,
-                    text_scale * -0.125,
-                    64.0,
-                    YELLOW,
-                );
+            apply_transforms(gl, &[flip_y()], |_gl| {
+                let params = TextParams {
+                    font_size: 64,
+                    font_scale: 1.0 / 256.0,
+                    font_scale_aspect: 1.0,
+                    color: YELLOW,
+                    ..Default::default()
+                };
+                draw_text_ex(&format!("Mouse X: {}", mouse.x), -0.375, 0.125, params);
+                draw_text_ex(&format!("Mouse Y: {}", mouse.y), -0.375, -0.125, params);
             });
         });
         // draw rotating outer layer
