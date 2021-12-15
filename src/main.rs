@@ -87,7 +87,15 @@ fn nyoom(rad: f32) -> Mat4 {
     Mat4::from_rotation_ypr(rad, rad, rad)
 }
 
-#[macroquad::main("title")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "title".to_owned(),
+        fullscreen: true,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
     // gl for transforms
     let gl = unsafe { get_internal_gl().quad_gl };
@@ -101,6 +109,16 @@ async fn main() {
 
     // main loop
     loop {
+        if let Some(key) = get_last_key_pressed() {
+            match key {
+                KeyCode::Q => {
+                    if is_key_down(KeyCode::LeftControl) {
+                        return;
+                    }
+                }
+                _ => {}
+            }
+        }
         // nearly every macroquad function uses f32 instead of f64 because that's what `Mat4`s are made of
         let time = get_time() as f32;
 
