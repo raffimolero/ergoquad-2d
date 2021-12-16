@@ -2,18 +2,23 @@ use std::f32::consts::TAU;
 
 use macroquad::prelude::*;
 
-use ergo::*;
+use ergoquad::*;
 /// Makes working with transforms much easier; more `ergo`nomic.
-mod ergo {
+mod ergoquad {
     use macroquad::prelude::*;
 
     pub use transforms::*;
     pub mod transforms {
         use macroquad::prelude::*;
-        use std::f32::consts::TAU;
 
         pub fn shift(x: f32, y: f32) -> Mat4 {
             Mat4::from_translation(vec3(x, y, 0.0))
+        }
+        pub fn further(z: f32) -> Mat4 {
+            Mat4::from_translation(vec3(0.0, 0.0, z))
+        }
+        pub fn closer(z: f32) -> Mat4 {
+            Mat4::from_translation(vec3(0.0, 0.0, -z))
         }
 
         pub fn flip_x() -> Mat4 {
@@ -116,6 +121,7 @@ async fn main() {
 
     // initialize canvases
     let outer = new_canvas(512, 512);
+    #[allow(unused_assignments)]
     let [mut x, mut y, mut yaw, mut pitch, mut roll] = [0.0; 5];
     let mut zoom = 1.0;
     let inner = new_canvas(128, 128);
@@ -200,18 +206,6 @@ async fn main() {
             apply_transforms(gl, &[rotation, translation], |gl| draw_canvas(inner, gl));
             apply_transforms(gl, &[translation, rotation], |gl| draw_canvas(inner, gl));
             // comment one out to find out which is which
-
-            apply_transforms(gl, &[flip_y()], |_gl| {
-                let params = TextParams {
-                    font_size: 64,
-                    font_scale: 1.0 / 512.0,
-                    font_scale_aspect: 1.0,
-                    color: YELLOW,
-                    ..Default::default()
-                };
-                draw_text_ex(&format!("Mouse X: {}", mouse.x), -0.375, 0.125, params);
-                draw_text_ex(&format!("Mouse Y: {}", mouse.y), -0.375, -0.125, params);
-            });
         });
         // draw rotating outer layer
         // https://en.wikipedia.org/wiki/Aircraft_principal_axes
@@ -227,8 +221,37 @@ async fn main() {
             ],
             |gl| {
                 draw_canvas(outer, gl);
+                apply_transforms(gl, &[flip_y(), closer(0.125)], |gl| {
+                    let params = TextParams {
+                        font_size: 64,
+                        font_scale: 1.0 / 512.0,
+                        font_scale_aspect: 1.0,
+                        color: YELLOW,
+                        ..Default::default()
+                    };
+                    draw_text_ex(&format!("Mouse X: {}", mouse.x), -0.375, 0.125, params);
+                    draw_text_ex(&format!("Mouse Y: {}", mouse.y), -0.375, -0.125, params);
+                    // // Returns the identity matrix.
+                    // draw_text_ex(
+                    //     &format!("Transform: {:?}", gl.get_projection_matrix()),
+                    //     -0.75,
+                    //     -0.25,
+                    //     TextParams {
+                    //         font_scale: 1.0 / 1024.0,
+                    //         ..params
+                    //     },
+                    // );
+                });
             },
         );
+
+        // TODO: have points that follow the 4 corners of the outer panel.
+
+        // // Doesn't transform the point.
+        // let outer_bl_corner =
+        //     gl.get_projection_matrix()
+        //         .transform_point3(vec3(x - 0.5, y - 0.5, 0.0));
+        // draw_circle(outer_bl_corner.x, outer_bl_corner.y, 1.0 / 64.0, WHITE);
 
         // end frame
         next_frame().await
