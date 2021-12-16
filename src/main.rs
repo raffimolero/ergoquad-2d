@@ -26,8 +26,14 @@ mod ergo {
             Mat4::from_scale(vec3(-1.0, -1.0, 1.0))
         }
 
-        pub fn rotate_z(radians: f32) -> Mat4 {
-            Mat4::from_rotation_z(radians)
+        pub fn rotate_x(pitch: f32) -> Mat4 {
+            Mat4::from_rotation_x(pitch)
+        }
+        pub fn rotate_y(yaw: f32) -> Mat4 {
+            Mat4::from_rotation_y(yaw)
+        }
+        pub fn rotate_z(roll: f32) -> Mat4 {
+            Mat4::from_rotation_z(roll)
         }
 
         pub fn upscale(scale: f32) -> Mat4 {
@@ -111,7 +117,6 @@ async fn main() {
     // initialize canvases
     let outer = new_canvas(512, 512);
     let [mut x, mut y, mut yaw, mut pitch, mut roll] = [0.0; 5];
-    // TODO: implement zooming through mouse wheel
     let mut zoom = 1.0;
     let inner = new_canvas(128, 128);
 
@@ -125,10 +130,13 @@ async fn main() {
         // check mouse position
         // mouse goes downwards, while transforms go upwards
         let mouse = mouse_position_local();
+        let (_scroll_x, scroll_y) = mouse_wheel();
         {
-            let sensitivity = 0.5;
-            yaw = (mouse.x - x) * sensitivity;
-            pitch = (-mouse.y - y) * sensitivity;
+            let mouse_sens = 0.5;
+            let scroll_sens = 0.25;
+            yaw = (mouse.x / zoom - x) * mouse_sens;
+            pitch = (-mouse.y / zoom - y) * mouse_sens;
+            zoom *= (2_f32).powf(scroll_y * scroll_sens);
         }
 
         // check keypresses
@@ -196,7 +204,7 @@ async fn main() {
             apply_transforms(gl, &[flip_y()], |_gl| {
                 let params = TextParams {
                     font_size: 64,
-                    font_scale: 1.0 / 256.0,
+                    font_scale: 1.0 / 512.0,
                     font_scale_aspect: 1.0,
                     color: YELLOW,
                     ..Default::default()
@@ -206,15 +214,20 @@ async fn main() {
             });
         });
         // draw rotating outer layer
-        apply_transform(
+        // https://en.wikipedia.org/wiki/Aircraft_principal_axes
+        // if objects face the screen, positive is pitch down yaw your left roll counterclockwise (XYZ)
+        apply_transforms(
             gl,
-            Mat4::from_scale_rotation_translation(
-                vec3(zoom, zoom, 1.0),
-                // I'll be honest, I don't understand how yaw, pitch, and roll work.
-                Quat::from_rotation_ypr(yaw * TAU, -pitch * TAU, -roll * TAU),
-                vec3(x, y, 0.0),
-            ),
-            |gl| draw_canvas(outer, gl),
+            &[
+                upscale(zoom),
+                shift(x, y),
+                rotate_x(pitch * TAU),
+                rotate_y(-yaw * TAU),
+                rotate_z(-roll * TAU),
+            ],
+            |gl| {
+                draw_canvas(outer, gl);
+            },
         );
 
         // end frame
