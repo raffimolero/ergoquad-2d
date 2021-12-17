@@ -27,18 +27,16 @@ async fn main() {
     let gl = unsafe { get_internal_gl().quad_gl };
     // camera for canvases
     let cam = &mut Camera2D::default();
-    cam.zoom = vec2(1.0, -1.0);
     set_camera(cam);
 
     let mut mouse = mouse_position_local();
     let mut mouse_prev;
 
     // initialize canvases
-    let outer = new_canvas(512, 512);
-    #[allow(unused_assignments)]
-    let [mut x, mut y, mut rot] = [0.0; 3];
-    let mut zoom = 1.0;
-    let inner = new_canvas(128, 128);
+    let minimap = new_canvas(512, 512);
+    let object = new_canvas(128, 128);
+    let [mut x, mut y, mut rot] = [0.75, 0.75, 0.0];
+    let mut zoom = 0.25;
 
     // main loop
     loop {
@@ -90,7 +88,7 @@ async fn main() {
             }
 
             // rotation, clockwise
-            let sensitivity = 0.5;
+            let sensitivity = TAU / 2.0; // no i will not use pi
             if is_key_down(Q) {
                 rot -= delta * sensitivity;
             }
@@ -99,10 +97,10 @@ async fn main() {
             }
         }
 
-        clear_background(DARKBLUE);
-        paint_canvas(outer, cam, |cam| {
+        paint_canvas(minimap, cam, |cam| {
             clear_background(DARKGREEN);
-            paint_canvas(inner, cam, |_| {
+            draw_line(0.0, 0.0, 0.0, 1.0, 1.0 / 32.0, MAGENTA);
+            paint_canvas(object, cam, |_| {
                 clear_background(DARKBROWN);
                 let params = TextParams {
                     font,
@@ -112,7 +110,7 @@ async fn main() {
                     ..Default::default()
                 };
                 draw_text_ex("Sample Text", -0.75, 0.0, params);
-                transform(gl, rotate_cw(time / 3.0 * TAU), |_| {
+                apply(gl, rotate_cw(time / 3.0 * TAU), |_| {
                     draw_line(0.0, 0.0, 0.0, 1.0, 0.25 * 0.25, BLUE);
                 })
             });
@@ -121,13 +119,29 @@ async fn main() {
             let rotate = rotate_cw(time / 5.0 * TAU);
             let shift = shift((time * 2.0).sin() / 2.0, 0.0);
 
-            // notice the difference in order of rotation and translation
-            transform(gl, rotate * shift, |gl| draw_canvas(inner, gl));
-            transform(gl, shift * rotate, |gl| draw_canvas(inner, gl));
-            // comment one out to find out which is which
+            apply(gl, downscale(2.0), |gl| {
+                // notice the difference in order of rotation and translation
+                apply(gl, rotate * shift, |gl| draw_canvas(object, gl, 1.0));
+                apply(gl, shift * rotate, |gl| draw_canvas(object, gl, 1.0));
+                // comment one out to find out which is which
+            });
+            draw_multiline_text(
+                &format!("Mouse X: {}\nMouse Y: {}", mouse.x, mouse.y),
+                -1.0 + 1.0 / 32.0,
+                -1.0 + 1.0 / 8.0,
+                0.125,
+                TextParams {
+                    font_size: 64,
+                    font_scale: 1.0 / 512.0,
+                    font_scale_aspect: 1.0,
+                    color: YELLOW,
+                    ..Default::default()
+                },
+            );
         });
 
-        draw_canvas(outer, gl);
+        // draw map
+        draw_canvas(minimap, gl, 1.0);
         let params = TextParams {
             font_size: 64,
             font_scale: 1.0 / 512.0,
@@ -135,51 +149,30 @@ async fn main() {
             color: YELLOW,
             ..Default::default()
         };
+        draw_rectangle_lines(-1.0, -1.0, 2.0, 2.0, 1.0 / 32.0, RED);
 
-        // draw outer layer
-        let mut outer_tl_corner = Default::default();
-        let mut mouse_transformed = Default::default();
-        transform(
-            gl,
-            shift(x, y) * upscale(zoom) * rotate_cw(rot * TAU),
-            |gl| {
-                draw_canvas(outer, gl);
-                let params = TextParams {
-                    font_size: 64,
-                    font_scale: 1.0 / 512.0,
-                    font_scale_aspect: 1.0,
-                    color: YELLOW,
-                    ..Default::default()
-                };
+        // draw minimap
+        let minimap_transform = shift(x, y) * rotate_cw(rot) * upscale(zoom);
+        apply(gl, minimap_transform, |gl| {
+            draw_canvas(minimap, gl, 0.5);
+            draw_rectangle_lines(-1.0, -1.0, 2.0, 2.0, 1.0 / 32.0, YELLOW);
+        });
 
-                let text = format!("Transform: {:#?}", gl.model());
-                let mut y = -0.25;
-                for chunk in text.split('\n') {
-                    draw_text_ex(
-                        &chunk,
-                        -0.75,
-                        y,
-                        TextParams {
-                            font_scale: 1.0 / 1024.0,
-                            ..params
-                        },
-                    );
-                    y += 1.0 / 16.0;
-                }
-
-                draw_text_ex(&format!("Mouse X: {}", mouse.x), -0.375, 0.125, params);
-                draw_text_ex(&format!("Mouse Y: {}", mouse.y), -0.375, -0.125, params);
-                outer_tl_corner = gl.model().transform_point3(vec3(-1.0, -1.0, 0.0));
-
-                mouse_transformed = gl
-                    .model()
-                    .inverse()
-                    .transform_point3(vec3(mouse.x, mouse.y, 0.0));
-            },
+        draw_multiline_text(
+            &format!("Mouse X: {}\nMouse Y: {}", mouse.x, mouse.y),
+            -1.0 + 1.0 / 32.0,
+            -1.0 + 1.0 / 8.0,
+            0.125,
+            params,
         );
 
-        draw_circle(outer_tl_corner.x, outer_tl_corner.y, 1.0 / 64.0, WHITE);
-        draw_circle(mouse_transformed.x, mouse_transformed.y, 1.0 / 64.0, WHITE);
+        let inner_mouse = minimap_transform
+            .inverse()
+            .transform_point3(vec3(mouse.x, mouse.y, 0.0));
+        draw_circle(inner_mouse.x, inner_mouse.y, 1.0 / 64.0, YELLOW);
+
+        let outer_mouse = minimap_transform.transform_point3(vec3(mouse.x, mouse.y, 0.0));
+        draw_circle(outer_mouse.x, outer_mouse.y, 1.0 / 64.0, RED);
 
         // end frame
         next_frame().await
