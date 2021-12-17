@@ -13,8 +13,6 @@ fn window_conf() -> Conf {
     }
 }
 
-// TODO: Fix orientation, currently flipped upside-down.
-// Note: Do not change the camera's zoom. This will ripple across canvases.
 #[macroquad::main(window_conf)]
 async fn main() {
     // resource folder
@@ -28,6 +26,7 @@ async fn main() {
     let gl = unsafe { get_internal_gl().quad_gl };
     // camera for canvases
     let cam = &mut Camera2D::default();
+    cam.zoom = vec2(1.0, -1.0);
     set_camera(cam);
 
     let mut mouse = mouse_position_local();
