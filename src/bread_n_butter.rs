@@ -25,7 +25,7 @@ pub fn paint_canvas(
 pub fn draw_canvas(target: Canvas, gl: &mut QuadGl) {
     transform(
         gl,
-        shift(-0.5, -0.5) * downscale(target.texture.height()),
+        shift(-1.0, -1.0) * downscale(target.texture.height() / 2.0),
         |_| {
             draw_texture(target.texture, 0.0, 0.0, WHITE);
         },

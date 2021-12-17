@@ -115,7 +115,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ergoquad"
+name = "ergoquad-2d"
 version = "0.1.0"
 dependencies = [
  "macroquad",
