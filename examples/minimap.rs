@@ -13,7 +13,8 @@ fn window_conf() -> Conf {
     }
 }
 
-// TODO
+// TODO: Fix orientation, currently flipped upside-down.
+// Note: Do not change the camera's zoom. This will ripple across canvases.
 #[macroquad::main(window_conf)]
 async fn main() {
     // resource folder
