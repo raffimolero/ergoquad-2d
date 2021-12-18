@@ -23,13 +23,12 @@ pub fn paint_canvas(
     camera: &mut Camera2D,
     instructions: impl FnOnce(&mut Camera2D),
 ) {
-    let previous_target = camera.render_target;
-    set_camera(&Camera2D {
+    let cam = &mut Camera2D {
         render_target: Some(target),
         ..Default::default()
-    });
-    instructions(camera);
-    camera.render_target = previous_target;
+    };
+    set_camera(cam);
+    instructions(cam);
     set_camera(camera);
 }
 pub fn draw_canvas(source: Canvas, gl: &mut QuadGl, opacity: f32) {

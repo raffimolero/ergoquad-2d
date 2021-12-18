@@ -15,13 +15,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    // resource folder
-    set_pc_assets_folder("examples/assets");
-    // font
-    let font = load_ttf_font("VarelaRound-Regular.ttf")
-        .await
-        .expect("rip varela round");
-
     // gl for transforms
     let gl = unsafe { get_internal_gl().quad_gl };
     // camera for canvases
@@ -29,8 +22,16 @@ async fn main() {
     cam.zoom = vec2(1.0, -1.0);
     set_camera(cam);
 
+    // mouse data
     let mut mouse = mouse_position_local();
     let mut mouse_prev;
+
+    // resource folder
+    set_pc_assets_folder("examples/assets");
+    // font
+    let font = load_ttf_font("VarelaRound-Regular.ttf")
+        .await
+        .expect("rip varela round");
 
     // initialize canvases
     let minimap = new_canvas(512, 512);
