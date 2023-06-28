@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "a slightly more ergonomic wrapper around macroquad"
 license = "MIT"
+repository = "https://github.com/raffimolero/ergoquad-2d/"
 
 [dependencies]
 macroquad = "0.3.26"
