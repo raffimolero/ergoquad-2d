@@ -1,8 +1,9 @@
 use crate::prelude::*;
 
-pub fn apply(gl: &mut QuadGl, matrix: Mat4, f: impl FnOnce(&mut QuadGl)) {
+pub fn apply(matrix: Mat4, f: impl FnOnce()) {
+    let gl = unsafe { get_internal_gl().quad_gl };
     gl.push_model_matrix(matrix);
-    f(gl);
+    f();
     gl.pop_model_matrix();
 }
 
@@ -31,17 +32,16 @@ pub fn paint_canvas(
     instructions(cam);
     set_camera(camera);
 }
-pub fn draw_canvas(source: Canvas, gl: &mut QuadGl, opacity: f32) {
+pub fn draw_canvas(source: Canvas, opacity: f32) {
     apply(
-        gl,
         shift(-1.0, -1.0) * downscale(source.texture.height() / 2.0),
-        |_| {
+        || {
             draw_texture(
                 source.texture,
                 0.0,
                 0.0,
                 Color::from_vec(vec4(1.0, 1.0, 1.0, opacity)),
-            );
+            )
         },
     );
 }

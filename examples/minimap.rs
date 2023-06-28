@@ -1,6 +1,6 @@
-use ergoquad_2d::prelude::*;
-
 use std::f32::consts::TAU;
+
+use ergoquad_2d::prelude::*;
 
 fn window_conf() -> Conf {
     Conf {
@@ -15,8 +15,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    // gl for transforms
-    let gl = unsafe { get_internal_gl().quad_gl };
     // camera for canvases
     let cam = &mut Camera2D::default();
     cam.zoom = vec2(1.0, -1.0);
@@ -37,6 +35,7 @@ async fn main() {
     let minimap = new_canvas(512, 512);
     let object = new_canvas(128, 128);
     let [mut x, mut y, mut rot] = [0.75, 0.75, 0.0];
+    let mut flipped = false;
     let mut zoom = 0.25;
 
     // main loop
@@ -96,6 +95,10 @@ async fn main() {
             if is_key_down(E) {
                 rot += delta * sensitivity;
             }
+
+            if is_key_pressed(CapsLock) {
+                flipped ^= true;
+            }
         }
 
         paint_canvas(minimap, cam, |cam| {
@@ -111,7 +114,7 @@ async fn main() {
                     ..Default::default()
                 };
                 draw_text_ex("Sample Text", -0.75, 0.0, params);
-                apply(gl, rotate_cw(time / 3.0 * TAU), |_| {
+                apply(rotate_cw(time / 3.0 * TAU), || {
                     draw_line(0.0, 0.0, 0.0, 1.0, 0.25 * 0.25, BLUE);
                 })
             });
@@ -120,10 +123,10 @@ async fn main() {
             let rotate = rotate_cw(time / 5.0 * TAU);
             let shift = shift((time * 2.0).sin() / 2.0, 0.0);
 
-            apply(gl, downscale(2.0), |gl| {
+            apply(downscale(2.0), || {
                 // notice the difference in order of rotation and translation
-                apply(gl, rotate * shift, |gl| draw_canvas(object, gl, 1.0));
-                apply(gl, shift * rotate, |gl| draw_canvas(object, gl, 1.0));
+                apply(rotate * shift, || draw_canvas(object, 1.0));
+                apply(shift * rotate, || draw_canvas(object, 1.0));
                 // comment one out to find out which is which
             });
             draw_multiline_text(
@@ -142,7 +145,7 @@ async fn main() {
         });
 
         // draw map
-        draw_canvas(minimap, gl, 1.0);
+        draw_canvas(minimap, 1.0);
         let params = TextParams {
             font_size: 64,
             font_scale: 1.0 / 512.0,
@@ -153,9 +156,12 @@ async fn main() {
         draw_rectangle_lines(-1.0, -1.0, 2.0, 2.0, 1.0 / 32.0, RED);
 
         // draw minimap
-        let minimap_transform = shift(x, y) * rotate_cw(rot) * upscale(zoom);
-        apply(gl, minimap_transform, |gl| {
-            draw_canvas(minimap, gl, 0.5);
+        let mut minimap_transform = shift(x, y) * rotate_cw(rot) * upscale(zoom);
+        if flipped {
+            minimap_transform = minimap_transform * flip_x();
+        }
+        apply(minimap_transform, || {
+            draw_canvas(minimap, 0.5);
             draw_rectangle_lines(-1.0, -1.0, 2.0, 2.0, 1.0 / 32.0, YELLOW);
         });
 
