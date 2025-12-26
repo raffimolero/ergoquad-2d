@@ -1,10 +1,10 @@
 [package]
 name = "ergoquad-2d"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "a slightly more ergonomic wrapper around macroquad"
 license = "MIT"
 repository = "https://github.com/raffimolero/ergoquad-2d/"
 
 [dependencies]
-macroquad = "0.3.26"
+macroquad = "0.4"
